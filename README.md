@@ -34,9 +34,9 @@ To run the simulation, follow these steps:
    ```bash
    g++ -std=c++11 lead.cpp -o lead
    
-- For leading vehicle:
+- For following vehicle:
    ```bash
-   g++ -std=c++11 follow.cpp -o follow
+   nvcc follow.cu -o follow
 
 4. Run simulation:
 - Initial the leading vehicle, start server, waiting from connections with following vehicles
@@ -45,4 +45,4 @@ To run the simulation, follow these steps:
 
 - One following vehicle will be created and send signal to the leading vehicle each time the follow file excuted    
     ```bash
-    /follow --initspeed [initspeed] --initposition [initposition] --distance [distance] --id [id]
+    ./follow --initspeed [initspeed] --initposition [initposition] --distance [distance] --id [id]
