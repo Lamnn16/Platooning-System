@@ -1,5 +1,4 @@
 #include "follow.h"
-#include <cuda_runtime.h>
 
 FollowingVehicle::FollowingVehicle(int id, double initialSpeed, double initialPosition, double targetDistance, double Kp, double Ki, double Kd)
     : id(id), position(initialPosition), speed(initialSpeed), serverSocket(0), targetDistance(targetDistance),
@@ -82,25 +81,6 @@ void FollowingVehicle::sendFollowerMessagesContinuously(int interval)
     }
 }
 
-// CUDA kernel function for calculating speed and distance
-__global__ void calculateSpeedAndDistance(double* deviceSpeed, double* devicePosition, double leaderPosition,double targetSpeed, double targetDistance, double Kp, double Ki, double Kd)
-{
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-
-    // Calculate speed
-    double error = targetSpeed - deviceSpeed[index];
-    double integralError = 0.0; // Assume integralError and previousError are stored in device memory
-    double previousError = 0.0;
-    double derivativeError = error - previousError;
-    double controlSignal = Kp * error + Ki * integralError + Kd * derivativeError;
-    deviceSpeed[index] += controlSignal;
-
-    // Calculate distance
-    double distanceError = targetDistance - (leaderPosition - devicePosition[index]);
-    double positionControlSignal = Kp * distanceError;
-    devicePosition[index] -= positionControlSignal;
-}
-
 void FollowingVehicle::receiveStateFromLeader()
 {
     Message message;
@@ -113,28 +93,21 @@ void FollowingVehicle::receiveStateFromLeader()
     {
         // Use the received speed as the targetSpeed
         double targetSpeed = message.speed;
-        double leaderPosition = message.position;
 
-        // Allocate device memory for speed and position
-        double* deviceSpeed;
-        double* devicePosition;
-        cudaMalloc((void**)&deviceSpeed, sizeof(double));
-        cudaMalloc((void**)&devicePosition, sizeof(double));
+        // PID controller for velocity control
+        double error = targetSpeed - speed;
+        integralError += error;
+        double derivativeError = error - previousError;
+        double controlSignal = Kp * error + Ki * integralError + Kd * derivativeError;
+        previousError = error;
 
-        // Copy speed and position data to device memory
-        cudaMemcpy(deviceSpeed, &speed, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy(devicePosition, &position, sizeof(double), cudaMemcpyHostToDevice);
+        // Update speed
+        speed += controlSignal;
 
-        // Call the CUDA kernel for speed and distance calculation
-        calculateSpeedAndDistance<<<1, 1>>>(deviceSpeed, devicePosition, leaderPosition, targetSpeed, targetDistance, Kp, Ki, Kd);
-
-        // Copy the results back to the host
-        cudaMemcpy(&speed, deviceSpeed, sizeof(double), cudaMemcpyDeviceToHost);
-        cudaMemcpy(&position, devicePosition, sizeof(double), cudaMemcpyDeviceToHost);
-
-        // Free device memory
-        cudaFree(deviceSpeed);
-        cudaFree(devicePosition);
+        // Maintain distance between vehicles
+        double distanceError = targetDistance - (message.position - position);
+        double positionControlSignal = Kp * distanceError;
+        position -= positionControlSignal;
     }
 }
 
