@@ -39,6 +39,7 @@ struct Message
     double position;
     double speed;
     bool isConnected;
+    bool obstacleDetected;
 };
 
 class FollowingVehicle
@@ -54,6 +55,8 @@ private:
     double Kd;             // Derivative gain of the PID controller
     double integralError;  // Integral error for the PID controller
     double previousError;  // Previous error for the PID controller
+    bool isConnected; // Indicates if the vehicle is connected to the leader
+    bool _obstacleDetected; // Indicates if the vehicle is detecting an obstacle
 
 public:
     /**

@@ -52,23 +52,34 @@ void FollowingVehicle::connectToLeader(const std::string &ipAddress)
     if (connect(serverSocket, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0)
     {
         std::cerr << "Connection failed" << std::endl;
+        isConnected = false; // Set isConnected flag to false in case of connection failure
         return;
     }
+    isConnected = true;
     std::cout << "Connected to the leading vehicle!" << std::endl;
 }
 
 void FollowingVehicle::sendFollowerMessage()
 {
-    // Send follower message
-    Message followerMessage;
-    followerMessage.senderId = id;
-    followerMessage.position = position;
-    followerMessage.speed = speed;
-    followerMessage.isConnected = true;
-
-    if (send(serverSocket, &followerMessage, sizeof(followerMessage), 0) < 0)
+    // Send follower message only if connected to the leader
+    if (isConnected)
+        {
+        // Send follower message
+        Message followerMessage;
+        followerMessage.senderId = id;
+        followerMessage.position = position;
+        followerMessage.speed = speed;
+        followerMessage.isConnected = true;
+        followerMessage.obstacleDetected = _obstacleDetected;
+    
+        if (send(serverSocket, &followerMessage, sizeof(followerMessage), 0) < 0)
+        {
+            std::cerr << "Error sending follower message" << std::endl;
+        }
+    }
+    else
     {
-        std::cerr << "Error sending follower message" << std::endl;
+        std::cerr << "Communication failure: Not connected to the leader" << std::endl;
     }
 }
 
@@ -84,6 +95,13 @@ void FollowingVehicle::sendFollowerMessagesContinuously(int interval)
 void FollowingVehicle::receiveStateFromLeader()
 {
     Message message;
+    double targetSpeed = 0;
+
+    if (!isConnected)
+    {
+        std::cerr << "Communication failure: Not connected to the leader" << std::endl;
+        return;
+    }
 
     if (recv(serverSocket, &message, sizeof(message), 0) < 0)
     {
@@ -91,8 +109,15 @@ void FollowingVehicle::receiveStateFromLeader()
     }
     else
     {
+         // Check if obstacle is detected
+        // if (_obstacleDetected)
+        // {
+        //     std::cout << "Obstacle detected by the leader. Setting leader's speed to 0." << std::endl;
+        //     targetSpeed = 0.0; // Set leader's speed to 0 if obstacle is detected
+        //     _obstacleDetected = true;
+        // }
+        targetSpeed = message.speed;
         // Use the received speed as the targetSpeed
-        double targetSpeed = message.speed;
 
         // PID controller for velocity control
         double error = targetSpeed - speed;
@@ -114,7 +139,17 @@ void FollowingVehicle::receiveStateFromLeader()
 void FollowingVehicle::receiveMessageFromLeader()
 {
     while (true)
-    {
+    {   
+        if (isKeyPressed())
+        {
+            char c;
+            std::cin.get(c);
+            if (c == 'o')
+            {
+                std::cout << "Obstacle detected. Stopping follower vehicle." << std::endl;
+                _obstacleDetected = true;
+            }
+        }
         receiveStateFromLeader();
         std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Add a delay between receiving messages
     }
@@ -211,7 +246,7 @@ int main(int argc, char *argv[])
     // Connect to the leader
     follower.connectToLeader(ipAddress);
 
-    // Start a separate thread to receive messages from the leader continuously
+        // Start a separate thread to receive messages from the leader continuously
     std::thread receiveThread(&FollowingVehicle::receiveMessageFromLeader, &follower);
     receiveThread.detach(); // Detach the thread to let it run independently
 
@@ -235,6 +270,7 @@ int main(int argc, char *argv[])
                 break;
             }
         }
+        
 
         sleep(1);
     }

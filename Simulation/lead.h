@@ -36,6 +36,7 @@ struct Message
     double position;
     double speed;
     bool isConnected;
+    bool obstacleDetected;
 };
 
 class LeadingVehicle
@@ -49,6 +50,7 @@ private:
     std::vector<int> followerId;
     std::map<int, int> followersPosition;
     std::map<int, int> followersSpeed;
+    bool _obstacleDetected;
 
 public:
     /**

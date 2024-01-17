@@ -90,7 +90,7 @@ void LeadingVehicle::sendMessageToFollowers()
     {
         sendStateToFollowers();
         printState();
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(300));
     }
 }
 
@@ -137,6 +137,19 @@ void LeadingVehicle::handleFollowerConnection(int clientSocket)
 
         followersPosition[followerMessage.senderId] = followerMessage.position;
         followersSpeed[followerMessage.senderId] = followerMessage.speed;
+        
+        _obstacleDetected = followerMessage.obstacleDetected;
+        // Check if obstacle is detected by the follower
+        if (_obstacleDetected)
+        {
+            std::cout << "Obstacle Detected by the follower" << std::endl;
+            while(speed>0)
+            {
+                speed--; // Set leader's speed to 0 if obstacle is detected by the follower
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        }
+        
     }
 }
 
@@ -145,9 +158,12 @@ void LeadingVehicle::printState()
     std::cout << "Leading Vehicle ID: " << id;
     std::cout << "  Position: " << position;
     std::cout << "  Speed: " << speed << std::endl;
-
     for (int iD : followerId)
     {
+        if (_obstacleDetected)
+        {
+            std::cout << "Follower ID " << iD << " is facing an obstacle" << std::endl;
+        } 
         std::cout << "Connected Follower ID: " << iD;
         std::cout << "  Position: " << followersPosition[iD];
         std::cout << "  Speed: " << followersSpeed[iD] << std::endl;
