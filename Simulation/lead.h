@@ -27,6 +27,8 @@
 #include <arpa/inet.h>
 #include <thread>
 #include <algorithm>
+#include <omp.h> 
+#include <vector>
 
 const int PORT = 8080;
 
@@ -37,6 +39,7 @@ struct Message
     double speed;
     bool isConnected;
     bool obstacleDetected;
+    std::vector<std::vector<int>> clockMatrix;
 };
 
 class LeadingVehicle
@@ -51,6 +54,7 @@ private:
     std::map<int, int> followersPosition;
     std::map<int, int> followersSpeed;
     bool _obstacleDetected;
+    std::vector<std::vector<int>> clockMatrix;
 
 public:
     /**
@@ -92,6 +96,8 @@ public:
      * @brief Stops the server for the leading vehicle.
      */
     void stopServer();
+    void incrementClockMatrix(int value);
+    void printClockMatrix();
 
 private:
     void createServerSocket();

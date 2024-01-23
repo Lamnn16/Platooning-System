@@ -1,7 +1,11 @@
 #include "lead.h"
 
 LeadingVehicle::LeadingVehicle(int id, double initialPosition, double initialSpeed)
-    : id(id), position(initialPosition), speed(initialSpeed), serverSocket(0) {}
+    : id(id), position(initialPosition), speed(initialSpeed), serverSocket(0) 
+    {
+        // Initialize the clock matrix with zeros
+        clockMatrix = std::vector<std::vector<int>>(2, std::vector<int>(2, 0));
+    }
 
 int LeadingVehicle::getId() const
 {
@@ -16,6 +20,31 @@ double LeadingVehicle::getPosition() const
 double LeadingVehicle::getSpeed() const
 {
     return speed;
+}
+
+void LeadingVehicle::incrementClockMatrix(int value)
+{
+    // Increment each element in the clock matrix by the given value
+    for (auto& row : clockMatrix)
+    {
+        for (auto& element : row)
+        {
+            element += value;
+        }
+    }
+}
+
+void LeadingVehicle::printClockMatrix()
+{
+    std::cout << "Clock Matrix:" << std::endl;
+    for (const auto& row : clockMatrix)
+    {
+        for (const auto& element : row)
+        {
+            std::cout << element << " ";
+        }
+        std::cout << std::endl;
+    }
 }
 
 void LeadingVehicle::startServer()
@@ -100,7 +129,10 @@ void LeadingVehicle::sendStateToFollowers()
     message.senderId = id;
     message.position = position;
     message.speed = speed;
-
+    // message.clockMatrix = clockMatrix;
+    
+    // Parallelize the loop using OpenMP
+    #pragma omp parallel for
     for (int followerSocket : followers)
     {
         if (send(followerSocket, &message, sizeof(message), 0) < 0)
@@ -158,6 +190,8 @@ void LeadingVehicle::printState()
     std::cout << "Leading Vehicle ID: " << id;
     std::cout << "  Position: " << position;
     std::cout << "  Speed: " << speed << std::endl;
+    
+    #pragma omp parallel for
     for (int iD : followerId)
     {
         if (_obstacleDetected)
@@ -169,6 +203,8 @@ void LeadingVehicle::printState()
         std::cout << "  Speed: " << followersSpeed[iD] << std::endl;
     }
     std::cout << std::endl;
+    
+    printClockMatrix();
 }
 
 int main()
@@ -177,7 +213,12 @@ int main()
     leadingVehicle.startServer();
 
     while (true)
-    {
+    {   
+        #pragma omp parallel for
+        // Increment the clock matrix by 1
+        leadingVehicle.incrementClockMatrix(1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        
         // Perform other tasks in the main function, if any
     }
 

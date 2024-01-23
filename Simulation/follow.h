@@ -27,6 +27,8 @@
 #include <unistd.h>
 #include <sys/select.h>
 #include <thread>
+#include <omp.h>
+#include <vector>
 
 const int STDIN = 0;
 
@@ -40,6 +42,7 @@ struct Message
     double speed;
     bool isConnected;
     bool obstacleDetected;
+    std::vector<std::vector<int>> clockMatrix;
 };
 
 class FollowingVehicle
@@ -57,6 +60,7 @@ private:
     double previousError;  // Previous error for the PID controller
     bool isConnected; // Indicates if the vehicle is connected to the leader
     bool _obstacleDetected; // Indicates if the vehicle is detecting an obstacle
+    std::vector<std::vector<int>> clockMatrix;
 
 public:
     /**
@@ -146,6 +150,8 @@ public:
      * @brief Stops the server socket connection.
      */
     void stopServer();
+    
+    void printClockMatrix();
 };
 
 /**

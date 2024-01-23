@@ -2,7 +2,10 @@
 
 FollowingVehicle::FollowingVehicle(int id, double initialSpeed, double initialPosition, double targetDistance, double Kp, double Ki, double Kd)
     : id(id), position(initialPosition), speed(initialSpeed), serverSocket(0), targetDistance(targetDistance),
-      Kp(Kp), Ki(Ki), Kd(Kd), integralError(0.0), previousError(0.0) {}
+      Kp(Kp), Ki(Ki), Kd(Kd), integralError(0.0), previousError(0.0) 
+      {
+        clockMatrix = std::vector<std::vector<int>>(2, std::vector<int>(2, 0));
+      }
 
 int FollowingVehicle::getId() const
 {
@@ -87,7 +90,12 @@ void FollowingVehicle::sendFollowerMessagesContinuously(int interval)
 {
     while (true)
     {
-        sendFollowerMessage();
+        // Parallelize the function using OpenMP
+        #pragma omp parallel
+        {
+            // Each thread will execute a separate instance of the function
+            sendFollowerMessage();
+        }
         std::this_thread::sleep_for(std::chrono::milliseconds(interval));
     }
 }
@@ -109,6 +117,7 @@ void FollowingVehicle::receiveStateFromLeader()
     }
     else
     {
+        clockMatrix = message.clockMatrix;
          // Check if obstacle is detected
         // if (_obstacleDetected)
         // {
@@ -150,8 +159,28 @@ void FollowingVehicle::receiveMessageFromLeader()
                 _obstacleDetected = true;
             }
         }
-        receiveStateFromLeader();
+
+        // Parallelize the loop using OpenMP
+        #pragma omp parallel for
+        for (int i = 0; i < 100; i++)
+        {
+            receiveStateFromLeader();
+        }
+        
         std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Add a delay between receiving messages
+    }
+}
+
+void FollowingVehicle::printClockMatrix()
+{
+    std::cout << "Clock Matrix:" << std::endl;
+    for (const auto& row : clockMatrix)
+    {
+        for (const auto& element : row)
+        {
+            std::cout << element << " ";
+        }
+        std::cout << std::endl;
     }
 }
 
@@ -270,8 +299,6 @@ int main(int argc, char *argv[])
                 break;
             }
         }
-        
-
         sleep(1);
     }
 
